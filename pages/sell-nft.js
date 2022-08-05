@@ -15,6 +15,7 @@ export default function Home() {
     const chainString = chainId ? parseInt(chainId).toString() : "31337"
 
     const [isDisabled, setIsDisabled] = useState(false)
+    const [isAlreadyApproved, setIsAlreadyApproved] = useState(false)
 
     const marketplaceAddress = networkMapping[chainString].NftMarketplace[0]
     const dispatch = useNotification()
@@ -33,9 +34,11 @@ export default function Home() {
                 tokenId: tokenId
             }
         }
-        await runContractFunction({
+        return await runContractFunction({
             params: isApprovedOptions,
-            onSuccess: (result) => { return result.toString() === marketplaceAddress },
+            onSuccess: (result) => {
+                console.log(result)
+                return result.toString() === marketplaceAddress},
             onError: (error) => console.log(error)
         })
     }
@@ -87,7 +90,9 @@ export default function Home() {
             params: listOptions,
             onSuccess: () => handleListSuccess(nftAddress, tokenId, price),
             onError: (error) => {
+                //console.log(isDisabled)
                 setIsDisabled(false)
+                //console.log(isDisabled)
                 console.log(error)
             }
         })
@@ -105,7 +110,9 @@ export default function Home() {
     return (
         <div className={styles.container}>
             <Form
-                onSubmit={isApproved ? alreadyApprovedOnlyList : approveAndList}
+                onSubmit={async (data) => {
+                    await isApproved(data) ? await alreadyApprovedOnlyList(data) : await approveAndList(data)
+                }}
                 isDisabled={isDisabled}
                 data={[{
                 name: "NFT Address",

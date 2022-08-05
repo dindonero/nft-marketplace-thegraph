@@ -7,16 +7,38 @@ import nftAbi from "../constants/BasicNft.json"
 import { useMoralis, useWeb3Contract } from "react-moralis"
 import nftMarketplaceAbi from "../constants/NftMarketplace.json"
 import networkMapping from "../constants/networkMappings.json"
+import { useState } from "react"
 
 export default function Home() {
 
     const {chainId } = useMoralis()
     const chainString = chainId ? parseInt(chainId).toString() : "31337"
 
+    const [isDisabled, setIsDisabled] = useState(false)
+
     const marketplaceAddress = networkMapping[chainString].NftMarketplace[0]
     const dispatch = useNotification()
 
     const { runContractFunction } = useWeb3Contract()
+
+    async function isApproved(data) {
+        const nftAddress = data.data[0].inputResult
+        const tokenId = data.data[1].inputResult
+
+        const isApprovedOptions = {
+            abi: nftAbi,
+            contractAddress: nftAddress,
+            functionName: "getApproved",
+            params: {
+                tokenId: tokenId
+            }
+        }
+        await runContractFunction({
+            params: isApprovedOptions,
+            onSuccess: (result) => { return result.toString() === marketplaceAddress },
+            onError: (error) => console.log(error)
+        })
+    }
 
     async function approveAndList(data) {
         console.log("Approving...")
@@ -41,6 +63,14 @@ export default function Home() {
         })
     }
 
+    async function alreadyApprovedOnlyList(data){
+        const nftAddress = data.data[0].inputResult
+        const tokenId = data.data[1].inputResult
+        const price = ethers.utils.parseUnits(data.data[2].inputResult, "ether").toString()
+
+        await handleApproveSuccess(nftAddress, tokenId, price)
+    }
+
     async function handleApproveSuccess(nftAddress, tokenId, price) {
         console.log("Time to list")
         const listOptions = {
@@ -56,7 +86,10 @@ export default function Home() {
         await runContractFunction({
             params: listOptions,
             onSuccess: () => handleListSuccess(nftAddress, tokenId, price),
-            onError: (error) => console.log(error)
+            onError: (error) => {
+                setIsDisabled(false)
+                console.log(error)
+            }
         })
     }
 
@@ -72,7 +105,8 @@ export default function Home() {
     return (
         <div className={styles.container}>
             <Form
-                onSubmit={approveAndList}
+                onSubmit={isApproved ? alreadyApprovedOnlyList : approveAndList}
+                isDisabled={isDisabled}
                 data={[{
                 name: "NFT Address",
                 type: "text",

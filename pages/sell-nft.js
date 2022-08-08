@@ -1,8 +1,8 @@
-import Head from 'next/head'
-import Image from 'next/image'
-import styles from '../styles/Home.module.css'
-import {Form, useNotification} from "web3uikit"
-import {ethers} from "ethers"
+import Head from "next/head"
+import Image from "next/image"
+import styles from "../styles/Home.module.css"
+import { Form, useNotification } from "web3uikit"
+import { ethers } from "ethers"
 import nftAbi from "../constants/BasicNft.json"
 import { useMoralis, useWeb3Contract } from "react-moralis"
 import nftMarketplaceAbi from "../constants/NftMarketplace.json"
@@ -11,7 +11,7 @@ import { useState } from "react"
 
 export default function Home() {
 
-    const {chainId } = useMoralis()
+    const { chainId } = useMoralis()
     const chainString = chainId ? parseInt(chainId).toString() : "31337"
 
     const [isDisabled, setIsDisabled] = useState(false)
@@ -34,13 +34,13 @@ export default function Home() {
                 tokenId: tokenId
             }
         }
-        return await runContractFunction({
+        const falses = await runContractFunction({
             params: isApprovedOptions,
-            onSuccess: (result) => {
-                console.log(result)
-                return result.toString() === marketplaceAddress},
+            onSuccess: (result) => result.toString() === marketplaceAddress,
             onError: (error) => console.log(error)
         })
+        console.log(falses)
+        return falses
     }
 
     async function approveAndList(data) {
@@ -59,22 +59,23 @@ export default function Home() {
             }
         }
 
-        await runContractFunction( {
+        await runContractFunction({
             params: approveOptions,
-            onSuccess: () => handleApproveSuccess(nftAddress, tokenId, price),
+            onSuccess: (tx) => handleApproveSuccess(tx, nftAddress, tokenId, price),
             onError: (error) => console.log(error)
         })
     }
 
-    async function alreadyApprovedOnlyList(data){
+    async function alreadyApprovedOnlyList(data) {
         const nftAddress = data.data[0].inputResult
         const tokenId = data.data[1].inputResult
         const price = ethers.utils.parseUnits(data.data[2].inputResult, "ether").toString()
 
-        await handleApproveSuccess(nftAddress, tokenId, price)
+        await handleApproveSuccess(null, nftAddress, tokenId, price)
     }
 
-    async function handleApproveSuccess(nftAddress, tokenId, price) {
+    async function handleApproveSuccess(tx, nftAddress, tokenId, price) {
+        if (tx) await tx.wait(1)
         console.log("Time to list")
         const listOptions = {
             abi: nftMarketplaceAbi,
@@ -88,7 +89,7 @@ export default function Home() {
         }
         await runContractFunction({
             params: listOptions,
-            onSuccess: () => handleListSuccess(nftAddress, tokenId, price),
+            onSuccess: (tx) => handleListSuccess(tx, nftAddress, tokenId, price),
             onError: (error) => {
                 //console.log(isDisabled)
                 setIsDisabled(false)
@@ -98,7 +99,8 @@ export default function Home() {
         })
     }
 
-    async function handleListSuccess(nftAddress, tokenId, price) {
+    async function handleListSuccess(tx, nftAddress, tokenId, price) {
+        await tx.wait(1)
         dispatch({
             type: "success",
             message: "listing updated",
@@ -110,17 +112,15 @@ export default function Home() {
     return (
         <div className={styles.container}>
             <Form
-                onSubmit={async (data) => {
-                    await isApproved(data) ? await alreadyApprovedOnlyList(data) : await approveAndList(data)
-                }}
-                isDisabled={isDisabled}
-                data={[{
-                name: "NFT Address",
-                type: "text",
-                inputWidth: "50%",
-                value: "",
-                key: "nftAddress"
-            },
+                onSubmit={async (data) => approveAndList(data)}
+                    isDisabled={isDisabled}
+                    data={[{
+                    name: "NFT Address",
+                    type: "text",
+                    inputWidth: "50%",
+                    value: "",
+                    key: "nftAddress"
+                },
                 {
                     name: "Token ID",
                     type: "number",
@@ -133,7 +133,7 @@ export default function Home() {
                     value: "",
                     key: "price"
                 }
-            ]}/>
-        </div>
-    )
-}
+                    ]}/>
+                    </div>
+                    )
+                }

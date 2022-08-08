@@ -11,6 +11,7 @@ export default function updateListingModal({ nftAddress, tokenId, isVisible, mar
     const dispatch = useNotification()
 
     const handleUpdateListingSuccess = async (tx) => {
+        await tx.wait(1)
         dispatch({
             type: "success",
             message: "listing updated",
@@ -39,7 +40,7 @@ export default function updateListingModal({ nftAddress, tokenId, isVisible, mar
                        onError: (error) => {
                            console.log(error)
                        },
-                       onSuccess: () => handleUpdateListingSuccess()
+                       onSuccess: (tx) => handleUpdateListingSuccess(tx)
                    })
                }}
         >
@@ -49,8 +50,6 @@ export default function updateListingModal({ nftAddress, tokenId, isVisible, mar
                 type="number"
                 onChange={(event) => {
                     setPriceToUpdateListingWith(event.target.value)
-                }}
-                onOk={() => {
                 }}
             />
         </Modal>
